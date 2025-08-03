@@ -1,23 +1,45 @@
 
+import { db } from '../db';
+import { invoicesTable } from '../db/schema';
 import { type CreateInvoiceInput, type Invoice } from '../schema';
 
-export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating an invoice and persisting it in the database.
-    // It should generate a unique invoice number and calculate total amount including tax.
+export const createInvoice = async (input: CreateInvoiceInput): Promise<Invoice> => {
+  try {
+    // Generate unique invoice number
+    const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Calculate total amount
     const totalAmount = input.amount + input.tax_amount;
     
-    return Promise.resolve({
-        id: 0, // Placeholder ID
-        invoice_number: `INV-${Date.now()}`, // Placeholder invoice number
+    // Set issue date to now if not provided
+    const issueDate = input.issue_date || new Date();
+    
+    // Insert invoice record
+    const result = await db.insert(invoicesTable)
+      .values({
+        invoice_number: invoiceNumber,
         order_id: input.order_id,
         customer_id: input.customer_id,
-        amount: input.amount,
-        tax_amount: input.tax_amount,
-        total_amount: totalAmount,
+        amount: input.amount.toString(),
+        tax_amount: input.tax_amount.toString(),
+        total_amount: totalAmount.toString(),
         payment_status: 'pending',
-        issue_date: input.issue_date || new Date(),
-        due_date: input.due_date,
-        created_at: new Date()
-    } as Invoice);
-}
+        issue_date: issueDate,
+        due_date: input.due_date
+      })
+      .returning()
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    const invoice = result[0];
+    return {
+      ...invoice,
+      amount: parseFloat(invoice.amount),
+      tax_amount: parseFloat(invoice.tax_amount),
+      total_amount: parseFloat(invoice.total_amount)
+    };
+  } catch (error) {
+    console.error('Invoice creation failed:', error);
+    throw error;
+  }
+};

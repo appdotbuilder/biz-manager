@@ -1,8 +1,23 @@
 
+import { db } from '../db';
+import { invoicesTable } from '../db/schema';
 import { type Invoice } from '../schema';
 
-export async function getInvoices(): Promise<Invoice[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is fetching all invoices with customer details.
-    return [];
-}
+export const getInvoices = async (): Promise<Invoice[]> => {
+  try {
+    const results = await db.select()
+      .from(invoicesTable)
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    return results.map(invoice => ({
+      ...invoice,
+      amount: parseFloat(invoice.amount),
+      tax_amount: parseFloat(invoice.tax_amount),
+      total_amount: parseFloat(invoice.total_amount)
+    }));
+  } catch (error) {
+    console.error('Fetching invoices failed:', error);
+    throw error;
+  }
+};
